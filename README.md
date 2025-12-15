@@ -5,12 +5,11 @@ Convert HuggingFace tokenizers to [tiktoken](https://github.com/openai/tiktoken)
 TikTokenizer allows you to use any compatible HuggingFace tokenizer with OpenAI's fast tiktoken library. It automatically handles the conversion from HuggingFace's tokenizer format to tiktoken's encoding format, with built-in caching for fast subsequent loads.
 
 ## Installation
-
 ```bash
 pip install tiktokenizer
 ```
 
-Install from source (using [uv](https://docs.astral.sh/uv/)):
+Or install from source (using [uv](https://docs.astral.sh/uv/)):
 ```bash
 git clone https://github.com/shakedzy/tiktokenizer.git
 cd tiktokenizer
