@@ -1,4 +1,4 @@
-# TikTokenizer
+# 🤗→⏳ TikTokenizer
 
 Convert HuggingFace tokenizers to [tiktoken](https://github.com/openai/tiktoken) format.
 
