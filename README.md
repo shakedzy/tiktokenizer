@@ -6,12 +6,16 @@ TikTokenizer allows you to use any compatible HuggingFace tokenizer with OpenAI'
 
 ## Installation
 
-Install from source:
+```bash
+pip install tiktokenizer
+```
 
+Install from source (using [uv](https://docs.astral.sh/uv/)):
 ```bash
 git clone https://github.com/shakedzy/tiktokenizer.git
 cd tiktokenizer
-pip install -e .
+uv sync
+uv run pip install -e .
 ```
 
 
