@@ -4,7 +4,9 @@ import json
 import pytest
 import tempfile
 from pathlib import Path
-from .core import TikTokenizer, IncompatibleTokenizerError
+from transformers import AutoTokenizer
+from tiktokenizer.core import TikTokenizer, IncompatibleTokenizerError
+from tiktokenizer.cli import main
 
 
 # Use a small, fast model for testing
@@ -46,14 +48,24 @@ class TestTikTokenizer:
             assert "mergeable_ranks" in data
             assert "special_tokens" in data
 
-    def test_create_uses_cache_on_second_call(self):
-        """Test that create() uses cache on subsequent calls."""
+    def test_create_raises_for_existing_cache(self):
+        """Test that create() raises FileExistsError on subsequent calls without override."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # First call creates the cache
+            TikTokenizer.create(TEST_MODEL, cache_dir=tmpdir)
+
+            # Second call should raise FileExistsError
+            with pytest.raises(FileExistsError):
+                TikTokenizer.create(TEST_MODEL, cache_dir=tmpdir)
+
+    def test_create_with_override(self):
+        """Test that create() with override=True overwrites existing cache."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # First call creates the cache
             enc1 = TikTokenizer.create(TEST_MODEL, cache_dir=tmpdir)
 
-            # Second call should load from cache
-            enc2 = TikTokenizer.create(TEST_MODEL, cache_dir=tmpdir)
+            # Second call with override should succeed
+            enc2 = TikTokenizer.create(TEST_MODEL, cache_dir=tmpdir, override=True)
 
             assert enc1.name == enc2.name
             assert enc1.n_vocab == enc2.n_vocab
@@ -71,16 +83,16 @@ class TestTikTokenizer:
             TikTokenizer.create(TEST_MODEL, cache_dir=tmpdir)
 
             # Then load from cache
-            cache_path = Path(tmpdir) / "openai-community--gpt2.json"
-            encoding = TikTokenizer.load(cache_path)
+            encoding = TikTokenizer.load(TEST_MODEL, cache_dir=tmpdir)
 
             assert encoding is not None
             assert encoding.name == "openai-community--gpt2"
 
     def test_load_raises_for_missing_file(self):
         """Test that load() raises FileNotFoundError for missing files."""
-        with pytest.raises(FileNotFoundError):
-            TikTokenizer.load("/nonexistent/path/file.json")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with pytest.raises(FileNotFoundError):
+                TikTokenizer.load("nonexistent/model", cache_dir=tmpdir)
 
     def test_get_cache_path(self):
         """Test get_cache_path returns correct path."""
@@ -127,8 +139,6 @@ class TestEncoding:
 
     def test_matches_huggingface(self, encoding):
         """Test that encoding matches HuggingFace tokenizer."""
-        from transformers import AutoTokenizer
-
         hf_tokenizer = AutoTokenizer.from_pretrained(TEST_MODEL)
 
         test_texts = [
@@ -149,8 +159,6 @@ class TestCLI:
 
     def test_cli_help(self):
         """Test that CLI help works."""
-        from tiktokenizer.cli import main
-
         # --help causes SystemExit(0)
         with pytest.raises(SystemExit) as exc_info:
             main(["--help"])
@@ -158,22 +166,16 @@ class TestCLI:
 
     def test_cli_check_compatible(self):
         """Test CLI check command with compatible model."""
-        from tiktokenizer.cli import main
-
         result = main(["check", TEST_MODEL])
         assert result == 0
 
     def test_cli_check_incompatible(self):
         """Test CLI check command with incompatible model."""
-        from tiktokenizer.cli import main
-
         result = main(["check", "mistralai/Mistral-7B-v0.1"])
         assert result == 1
 
     def test_cli_create(self, tmp_path):
         """Test CLI create command."""
-        from tiktokenizer.cli import main
-
         result = main(["create", TEST_MODEL, "--cache-dir", str(tmp_path)])
         assert result == 0
 
@@ -183,19 +185,14 @@ class TestCLI:
 
     def test_cli_load(self, tmp_path):
         """Test CLI load command."""
-        from tiktokenizer.cli import main
-
         # First create
         main(["create", TEST_MODEL, "--cache-dir", str(tmp_path)])
 
         # Then load
-        cache_file = tmp_path / "openai-community--gpt2.json"
-        result = main(["load", str(cache_file)])
+        result = main(["load", TEST_MODEL, "--cache-dir", str(tmp_path)])
         assert result == 0
 
-    def test_cli_load_missing_file(self):
-        """Test CLI load command with missing file."""
-        from tiktokenizer.cli import main
-
-        result = main(["load", "/nonexistent/file.json"])
+    def test_cli_load_missing_model(self, tmp_path):
+        """Test CLI load command with missing model."""
+        result = main(["load", "nonexistent/model", "--cache-dir", str(tmp_path)])
         assert result == 1
