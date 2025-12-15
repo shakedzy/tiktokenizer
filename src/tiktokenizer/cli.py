@@ -58,18 +58,16 @@ def cmd_create(args: argparse.Namespace) -> int:
 def cmd_load(args: argparse.Namespace) -> int:
     """Load a cached encoding and optionally test it."""
     model_name = args.model_name
-    cache_dir = Path(args.cache_dir) if args.cache_dir else TikTokenizer.DEFAULT_CACHE_DIR
-    cache_filename = TikTokenizer._sanitize_model_name(model_name) + ".json"
-    cache_file = Path(cache_dir / cache_filename).expanduser()
+    cache_dir = Path(args.cache_dir) if args.cache_dir else None
 
-    if not cache_file.exists():
-        print(f"✗ Error: Cache file not found: {cache_file}", file=sys.stderr)
-        return 1
-
-    print(f"Loading encoding from: {cache_file}")
+    cache_path = TikTokenizer.get_cache_path(model_name, cache_dir)
+    print(f"Loading encoding from: {cache_path}")
 
     try:
-        encoding = TikTokenizer.load(cache_file)
+        encoding = TikTokenizer.load(model_name, cache_dir=cache_dir)
+    except FileNotFoundError:
+        print(f"✗ Error: Cache file not found: {cache_path}", file=sys.stderr)
+        return 1
     except Exception as e:
         print(f"\n✗ Error loading encoding: {e}", file=sys.stderr)
         return 1
@@ -144,14 +142,14 @@ def main(argv: list[str] | None = None) -> int:
         "load",
         help="Load a cached tiktoken encoding",
     )
-    create_parser.add_argument(
+    load_parser.add_argument(
         "model_name",
         help="HuggingFace model name (e.g., 'Qwen/Qwen3-0.6B')",
     )
-    create_parser.add_argument(
+    load_parser.add_argument(
         "--cache-dir",
         "-c",
-        help="Directory to cache the encoding (default: ~/.cache/tiktokenizer/)",
+        help="Directory where the cached encoding is stored (default: ~/.cache/tiktokenizer/)",
     )
     load_parser.add_argument(
         "--test",
