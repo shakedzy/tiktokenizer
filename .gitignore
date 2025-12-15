@@ -1,0 +1,8 @@
+.venv*
+.vscode*
+.DS_Store
+.env
+
+*__pycache__*
+*.egg-info*
+*.pytest_cache*
